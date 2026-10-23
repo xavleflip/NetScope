@@ -133,3 +133,5 @@ The current folder has no automated test suite. The controlled example above is
 a manual smoke check. For a portfolio demonstration, show the local server's
 open/closed transition, a reviewed JSON report, and explain the limits of TCP
 reachability and conventional service labels.
+
+# NetScope
