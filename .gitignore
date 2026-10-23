@@ -221,3 +221,6 @@ __marimo__/
 
 #anyfolder
 reports/
+plan/
+.streamlit/
+tests/
