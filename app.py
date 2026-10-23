@@ -9,6 +9,8 @@ st.set_page_config(
 
 st.title("NetScope")
 st.caption("Local Network Security Scanner")
+st.caption("Service labels are conventional port assignments, not detected software. "
+           "The JSON report includes every checked port; timeouts do not prove a port is closed.")
 
 target = st.text_input(
     "Target",
