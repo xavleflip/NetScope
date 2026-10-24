@@ -44,6 +44,14 @@ The requirements file is shared by the application and tests. It permits Streaml
   invalid/oversized files, empty reports, normalized downloads, and import/filter
   operations that never invoke the scanner. Streamlit's internal event-loop
   socket pairs are left intact while the scanner probe boundary is mocked.
+- `test_history.py`: temporary SQLite storage, save/reopen metadata, input isolation,
+  deduplication and concurrent saves, stable IDs and scoped deletion, reopening in
+  a fresh Python process without sockets, payload validation/integrity, transaction
+  rollback, closed connections, and locked/read-only/full/corrupt/inaccessible or
+  unsupported storage. Full storage uses SQLite page limits rather than filling disk.
+- `test_history_dashboard.py`: explicit save only, repeated-save deduplication,
+  a real local scan saved and exported in a fresh AppTest session, selected deletion
+  with confirmation/cancellation, selection changes, and visible save/delete failures.
 
 ## Safety and cleanup
 
@@ -52,6 +60,13 @@ operating system to select an available port. Context managers close the
 listeners even if an assertion fails. They need no administrator privileges or
 pre-existing services. Failure scenarios use mocks, and command-line reports
 are written in a temporary directory that is cleaned up after the test.
+
+Every dashboard/history test that could access storage redirects the history path
+to its own temporary database. Tests do not read, create, or modify the real
+`data/netscope.db`. SQLite test connections are explicitly closed before temporary
+directories are removed, including on Windows. Storage error tests use controlled
+locks, transactions, connection modes, and mocks; they do not change real folder
+permissions or exhaust disk space.
 
 No test connects to an external host. Unsupported target strings are tested
 through validation and mocked probes only. AppTest runs the dashboard in process;

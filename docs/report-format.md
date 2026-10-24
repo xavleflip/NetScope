@@ -19,6 +19,8 @@ non-finite numbers, excessive nesting, and unsupported fields are rejected.
 
 Importing does not scan, resolve DNS, execute report content, select filesystem
 paths, or automatically save a file. Downloading is a separate user action.
+Use **Save report** to explicitly add validated evidence to
+[local history](local-history.md); importing alone never adds a history entry.
 Validation checks structure and consistency, not the authenticity of observations:
 someone can edit a structurally valid report.
 
@@ -64,7 +66,9 @@ shape. Unknown future fields require an explicitly supported schema version.
   enforces the byte limit before parsing; the validator returns an independent
   normalized dictionary without mutating the input. Neither API opens files or sockets.
 - `app.py` reads the bounded upload and displays values using ordinary Streamlit
-  components, with fixed download filenames and independent live/import controls.
+  components, with fixed download filenames and independent live/import/history controls.
+- `history.py` validates reports before storing them and revalidates on reopen.
+  Persistence occurs only through an explicit save; storage adds no scan behavior.
 
 The historical example files are kept unchanged. Normalized downloads add the
 version field and canonical UTC timestamps without rewriting the original file.

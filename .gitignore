@@ -229,3 +229,9 @@ plan/
 # Local verification environments, scratch files, and downloaded reports
 /work/
 /scan*.json
+
+# Private local history and SQLite sidecars
+/data/
+*.db-wal
+*.db-shm
+*.db-journal

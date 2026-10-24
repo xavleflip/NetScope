@@ -1,5 +1,6 @@
 import json
 from pathlib import Path
+from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 
@@ -14,6 +15,11 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class ReportImportTests(unittest.TestCase):
     def setUp(self):
+        directory = TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        patcher = patch("history.DEFAULT_DB_PATH", Path(directory.name) / "data" / "netscope.db")
+        patcher.start()
+        self.addCleanup(patcher.stop)
         self.data = (ROOT / "examples" / "localhost-open.json").read_bytes()
 
     def test_real_upload_displays_imported_evidence_without_scanning(self):

@@ -1,6 +1,7 @@
 import json
 from pathlib import Path
 import socket
+from tempfile import TemporaryDirectory
 import unittest
 from unittest.mock import patch
 
@@ -13,6 +14,13 @@ APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
 
 
 class DashboardTests(unittest.TestCase):
+    def setUp(self):
+        directory = TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        patcher = patch("history.DEFAULT_DB_PATH", Path(directory.name) / "data" / "netscope.db")
+        patcher.start()
+        self.addCleanup(patcher.stop)
+
     def test_initial_screen_does_not_scan(self):
         with patch("scanner.scan_target") as scan:
             app = AppTest.from_file(str(APP_PATH), default_timeout=10).run()
