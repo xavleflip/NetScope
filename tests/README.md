@@ -25,9 +25,14 @@ when it is missing.
   error codes, socket-creation failures, unknown services, report counts and
   timestamps, monotonic duration, JSON round-trip, boolean helper compatibility,
   and command-line export into a temporary directory.
+- `test_scan_limits.py`: integer port and range validation, inclusive boundaries,
+  the 1,024-port cap, finite timeout bounds, timeout forwarding, an explicit-range
+  local scan, and event-controlled proof of the 32-connection cap and cleanup.
 - `test_dashboard.py`: initial screen without scanning, a real local scan,
-  open-port count and table, JSON download control and payload, an empty open-port
-  table with unsuccessful results still downloadable, and rejected-target feedback.
+  status counts and table, JSON download control and payload, empty open-port
+  results, target/range rejection, failed-scan report clearing, and report retention
+  across filtering, form edits, and reruns without another scan. Downloads remain
+  complete when the table is filtered.
 
 ## Safety and cleanup
 
@@ -43,5 +48,6 @@ it does not launch a publicly reachable dashboard server. It verifies the downlo
 control and JSON supplied to Streamlit, rather than driving a browser save dialog.
 Streamlit may log a harmless missing `ScriptRunContext` warning in its testing mode.
 
-Extend these tests when Part 4 adds dashboard controls, session-state retention,
-filtering, and concurrent scans.
+Concurrency tests coordinate workers with events rather than timing sleeps and
+verify every simulated socket is closed across all four outcomes. Outcomes are
+tied to port numbers so tests do not depend on thread scheduling order.

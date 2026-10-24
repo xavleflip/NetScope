@@ -58,9 +58,14 @@ class ScanResultTests(unittest.TestCase):
         with patch("scanner.PORTS", [21, 22, 25, 53]), patch("scanner.socket.socket") as factory, patch(
             "scanner.socket.getservbyport", return_value="test-service"
         ), patch("scanner.time.perf_counter", side_effect=[100.0, 101.25]):
-            factory.return_value.__enter__.return_value.connect.side_effect = [
-                None, ConnectionRefusedError("refused"), TimeoutError("slow"), OSError("failed")
-            ]
+            # Workers may start in any order; tie each outcome to its port.
+            outcomes = {21: None, 22: ConnectionRefusedError("refused"),
+                        25: TimeoutError("slow"), 53: OSError("failed")}
+            def connect(address):
+                error = outcomes[address[1]]
+                if error is not None:
+                    raise error
+            factory.return_value.__enter__.return_value.connect.side_effect = connect
             report = scan_target("localhost")
         self.assertEqual(report["summary"], {
             "total": 4, "open": 1, "closed": 1, "timeout": 1, "error": 1
