@@ -69,6 +69,9 @@ shape. Unknown future fields require an explicitly supported schema version.
   components, with fixed download filenames and independent live/import/history controls.
 - `history.py` validates reports before storing them and revalidates on reopen.
   Persistence occurs only through an explicit save; storage adds no scan behavior.
+- `comparison.py` reuses report validation to compare two observations without IO.
+  Its [comparison download](scan-comparison.md) has a separate format and is not
+  an importable scan report.
 
 The historical example files are kept unchanged. Normalized downloads add the
 version field and canonical UTC timestamps without rewriting the original file.

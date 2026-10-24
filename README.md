@@ -5,7 +5,8 @@
 NetScope is a beginner cybersecurity project built with Python and Streamlit.
 It checks TCP ports on your own computer, shows connection outcomes with conventional
 service labels, and lets you download the results as a JSON report or explicitly
-save them in local history for later use.
+save them in local history for later use. It can also compare two observations
+to show status changes, missing coverage, and uncertain outcomes.
 
 In the dashboard, choose an inclusive range within ports **1–65535**, up to
 **1,024 ports per scan**, and a **0.05–2 second** timeout per connection.
@@ -83,6 +84,13 @@ History lives in `data/netscope.db` inside this project folder. It is local,
 unencrypted, and ignored by Git; it may reveal service information. Scanning and
 importing alone do not save history. See [local history](docs/local-history.md)
 for backup, restore, deletion, and storage error guidance.
+
+Under **Compare reports**, choose **Saved history** to select two saved entries,
+or **JSON files** to upload two reports. Select the earlier scan as the baseline
+and the later scan as the observation. Review their settings, summary, and port
+table, then click **Download comparison JSON**. Missing ports show **not scanned**;
+timeout/error transitions remain uncertain. Comparing never scans or saves history.
+See [comparing reports](docs/scan-comparison.md) for examples and interpretation.
 
 Run from the project folder so `.streamlit/config.toml` is loaded. Its default
 address is `127.0.0.1`; the launch command also explicitly sets loopback. If port

@@ -21,6 +21,10 @@ Repeated saves of the same normalized report return the same ID without adding
 another row. A new observation with different timestamps is a distinct report.
 IDs remain stable while stored and are not reused after deletion.
 
+To inspect changes between two saved observations, use **Compare reports → Saved
+history** and select the earlier baseline and later observation. See
+[comparing reports](scan-comparison.md) for missing-coverage and uncertainty rules.
+
 ## Storage and validation
 
 The database is `data/netscope.db`, relative to the folder containing `history.py`,

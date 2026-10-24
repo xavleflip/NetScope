@@ -52,6 +52,16 @@ The requirements file is shared by the application and tests. It permits Streaml
 - `test_history_dashboard.py`: explicit save only, repeated-save deduplication,
   a real local scan saved and exported in a fresh AppTest session, selected deletion
   with confirmation/cancellation, selection changes, and visible save/delete failures.
+- `test_comparison.py`: all 16 status transitions, recorded open-to-timeout evidence,
+  explicit refusal, partial/disjoint/maximum coverage, missing versus closed ports,
+  identical/empty reports, target aliases without DNS, reversed/equal/overlapping
+  times, different timeouts, label/error-detail changes, JSON compatibility,
+  deterministic output, input isolation, and comparison without file/socket/DB IO.
+- `test_comparison_dashboard.py`: paired uploads and explicit saved selections,
+  before/after evidence and JSON downloads, missing/invalid/oversized inputs,
+  reversed dates, settings/coverage warnings, identical/empty reports, source
+  changes, stale deleted selections, and storage failures. Scanner and history-save
+  boundaries reject accidental calls; every history database is temporary.
 
 ## Safety and cleanup
 
