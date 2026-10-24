@@ -18,17 +18,38 @@ Timeouts do not establish whether a port is closed. The dashboard shows status
 counts and all results, with an open-port filter. The download always contains
 the full report and the compatible `open_ports` list.
 
+Reports contain `target`, `timestamp`, `started_at`, `finished_at`,
+`duration_seconds`, `timeout_seconds`, `summary`, `results`, and `open_ports`.
+Each result has `port`, `service`, `status`, and an `error` message when applicable.
+
+Use only on a computer you own or are authorized to test. This project checks TCP
+connections; it does not detect vulnerabilities or scan external hosts. Review
+reports before sharing them, and keep the dashboard bound to localhost.
+
 ## Install
 
-Install Python 3.11 or newer, then open PowerShell and run:
+Use Python **3.11–3.14**. Development verification uses Windows with Python 3.14.7;
+other Python/platform combinations have not yet been verified. Open PowerShell:
 
 ```powershell
 cd D:\Project\NetScope
 python -m venv .venv
-.\.venv\Scripts\python.exe -m pip install streamlit
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 ```
 
 If `.venv` already exists, skip the command that creates it.
+Use the virtual environment's Python for installation, launch, and tests; activation
+is optional. `requirements.txt` supports Streamlit 1.66 patch releases starting at
+1.66.1. It is a compatible version range, not an exact lock of all dependencies.
+
+Verify the installation:
+
+```powershell
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+The suite uses Python's built-in test runner and Streamlit's testing API; no
+separate testing package is needed. See [the test guide](tests/README.md) for details.
 
 ## Start
 
@@ -44,6 +65,10 @@ cd D:\Project\NetScope
 3. Choose the start/end ports and timeout, then click **Start Scan**.
 4. Review the status counts and table, or select **Show only open ports**.
 5. Click **Download JSON Report** to save the full results.
+
+Run from the project folder so `.streamlit/config.toml` is loaded. Its default
+address is `127.0.0.1`; the launch command also explicitly sets loopback. If port
+8501 is busy, append `--server.port 8502` and open <http://127.0.0.1:8502>.
 
 Results stay available when you change the filter or edit the form. Click
 **Start Scan** again to replace them. A failed new scan clears the previous

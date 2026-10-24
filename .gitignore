@@ -151,6 +151,7 @@ activemq-data/
 
 # Environments
 .env
+.env.*
 .envrc
 .venv
 env/
@@ -218,8 +219,13 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+.streamlit/*
+!.streamlit/config.toml
 
 #anyfolder
 reports/
 plan/
-.streamlit/
+
+# Local verification environments, scratch files, and downloaded reports
+/work/
+/scan*.json

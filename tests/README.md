@@ -2,11 +2,11 @@
 
 ## Setup and run
 
-Use Python 3.11 or newer. In PowerShell, from the project directory:
+Use Python 3.11–3.14. In PowerShell, from the project directory:
 
 ```powershell
 cd D:\Project\NetScope
-.\.venv\Scripts\python.exe -m pip install streamlit
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
@@ -15,6 +15,9 @@ is the dashboard's existing dependency and supplies `streamlit.testing.v1.AppTes
 the test runner is Python's built-in `unittest`. No separate test package is needed.
 Dashboard tests require Streamlit to be installed; they are not silently skipped
 when it is missing.
+
+The requirements file is shared by the application and tests. It permits Streamlit
+1.66 patch releases starting at 1.66.1; it does not pin every transitive dependency.
 
 ## Coverage
 

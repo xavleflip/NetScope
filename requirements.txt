@@ -1,0 +1,2 @@
+# Streamlit includes the AppTest dashboard testing API; unittest is built in.
+streamlit>=1.66.1,<1.67
