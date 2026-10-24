@@ -6,6 +6,13 @@ import streamlit as st
 from scanner import DEFAULT_TIMEOUT, MAX_PORTS, MAX_TIMEOUT, MAX_WORKERS, MIN_TIMEOUT, scan_target
 from reports import MAX_REPORT_BYTES, load_report
 from history import HistoryError, delete_report, list_reports, load_saved_report, save_report
+from comparison import compare_reports
+
+
+def read_uploaded_report(uploaded):
+    """Apply the same bounded read to ordinary and comparison imports."""
+    uploaded.seek(0)
+    return load_report(uploaded.read(MAX_REPORT_BYTES + 1))
 
 
 def render_report(report, *, source="scan", scan_id=None):
@@ -41,6 +48,83 @@ def render_report(report, *, source="scan", scan_id=None):
             st.success(f"Report is stored in local history as #{saved_id}.")
         except (HistoryError, ValueError) as exc:
             st.error(f"Save failed: {exc}")
+
+
+def render_comparison():
+    st.subheader("Compare reports")
+    st.caption("Choose the earlier baseline and later observation by scan start time. "
+               "Comparing does not scan or save history. Validation does not prove authenticity.")
+    source = st.radio("Comparison source", ("Saved history", "JSON files"), key="comparison_source")
+    try:
+        if source == "Saved history":
+            entries = list_reports()
+            if not entries:
+                st.caption("Save reports to history, or choose JSON files to compare two uploads.")
+                return
+            by_id = {entry["id"]: entry for entry in entries}
+            selected = []
+            for role, label in (("baseline", "Earlier baseline"), ("observation", "Later observation")):
+                key = f"comparison_{role}_id"
+                if st.session_state.get(key) not in by_id:
+                    st.session_state.pop(key, None)
+                selected.append(st.selectbox(
+                    label, options=list(by_id), index=None, key=key,
+                    format_func=lambda scan_id: f"#{scan_id} · {by_id[scan_id]['started_at']} · "
+                    f"{by_id[scan_id]['target']} · {by_id[scan_id]['total']} ports",
+                ))
+            if any(scan_id is None for scan_id in selected):
+                st.caption("Select both reports to see their comparison.")
+                return
+            baseline, observation = [load_saved_report(scan_id) for scan_id in selected]
+            st.caption(f"Earlier baseline: saved report #{selected[0]}. "
+                       f"Later observation: saved report #{selected[1]}.")
+        else:
+            uploads = [st.file_uploader(
+                label, type=["json"], max_upload_size=1, key=f"comparison_{role}_upload",
+                help="Up to 1 MiB and 1,024 result rows per report. Uploading never starts a scan.",
+            ) for role, label in (("baseline", "Earlier baseline JSON"), ("observation", "Later observation JSON"))]
+            # Validate each provided upload even if its partner is still missing.
+            reports = [read_uploaded_report(upload) if upload is not None else None for upload in uploads]
+            if any(report is None for report in reports):
+                st.caption("Upload both reports to see their comparison.")
+                return
+            baseline, observation = reports
+        comparison = compare_reports(baseline, observation)
+    except (HistoryError, ValueError) as exc:
+        st.error(f"Comparison failed: {exc}")
+        return
+
+    st.caption(f"Matched target: {comparison['target']}. Service labels are conventional "
+               "port assignments; a changed label does not identify a software change. "
+               "Closed means an explicit connection refusal. Timeout/error outcomes remain uncertain.")
+    metadata = []
+    for role, label in (("baseline", "Earlier baseline"), ("observation", "Later observation")):
+        report = comparison[role]
+        metadata.append({"role": label, **{field: report[field] for field in (
+            "target", "started_at", "finished_at", "duration_seconds", "timeout_seconds",
+        )}, **report["summary"]})
+    st.dataframe(metadata, hide_index=True)
+    coverage = comparison["coverage"]
+    st.caption(f"Coverage: {len(coverage['shared'])} shared ports · "
+               f"{len(coverage['baseline_only'])} baseline only · "
+               f"{len(coverage['observation_only'])} later only. "
+               "Ports missing from either observation are not scanned.")
+    for note in comparison["notes"]:
+        st.warning(note)
+    for column, key, label in zip(st.columns(4),
+                                  ("status_changed", "status_unchanged", "not_scanned", "uncertain"),
+                                  ("Status changed", "Status unchanged", "Missing coverage", "Uncertain outcomes")):
+        column.metric(label, comparison["summary"][key])
+    st.caption(f"Conventional service labels changed: {comparison['summary']['service_label_changed']}. "
+               "Uncertain outcomes can also be changed, unchanged, or missing coverage; "
+               "unchanged refers to status, not service labels or error text.")
+    if comparison["results"]:
+        st.dataframe(comparison["results"], hide_index=True)
+    else:
+        st.info("Neither report contains scanned ports.")
+    st.download_button("Download comparison JSON", data=json.dumps(comparison, indent=2),
+                       file_name="comparison.json", mime="application/json", on_click="ignore",
+                       key="comparison_download")
 
 
 def render_history():
@@ -133,11 +217,11 @@ uploaded = st.file_uploader("Choose a NetScope JSON report", type=["json"],
                              help="Up to 1 MiB and 1,024 result rows. Importing never starts a scan.")
 if uploaded is not None:
     try:
-        uploaded.seek(0)
-        imported_report = load_report(uploaded.read(MAX_REPORT_BYTES + 1))
+        imported_report = read_uploaded_report(uploaded)
     except ValueError as exc:
         st.error(f"Import failed: {exc}")
     else:
         render_report(imported_report, source="imported")
 
 render_history()
+render_comparison()
