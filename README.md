@@ -84,3 +84,27 @@ To run the scanner without the dashboard:
 
 This checks the original common ports **21, 22, 25, 53, 80, 443, 3306, and 8080**,
 prints the results, and creates or overwrites `reports/scan.json`.
+
+## Try the portfolio demonstration
+
+Start the dashboard as above. In another PowerShell terminal, create an empty
+temporary folder and start a local HTTP server:
+
+```powershell
+cd D:\Project\NetScope
+$demoPython = (Resolve-Path .\.venv\Scripts\python.exe).Path
+$demoFolder = Join-Path ([System.IO.Path]::GetTempPath()) ("netscope-demo-" + [guid]::NewGuid().ToString("N"))
+New-Item -ItemType Directory -Path $demoFolder | Out-Null
+Set-Location -LiteralPath $demoFolder
+& $demoPython -m http.server 8080 --bind 127.0.0.1
+```
+
+1. Scan `127.0.0.1`, using port `8080` for both endpoints and timeout `2` seconds.
+2. Download the report while the server is running; expect `open`.
+3. Stop the HTTP server with **Ctrl+C**, wait for the prompt, and scan again.
+4. Download the new report. It may show `closed` or `timeout`; a timeout alone
+   does not prove the port is closed. Stop the dashboard when finished.
+
+If 8080 is occupied, use another available port in both the command and dashboard.
+Our recorded Windows demonstration changed from **open to timeout**. See the
+[screenshots, reviewed reports, architecture, and lessons](docs/portfolio-demo.md).

@@ -1,0 +1,28 @@
+{
+  "target": "127.0.0.1",
+  "timestamp": "2026-10-24T03:03:09.665295+00:00",
+  "started_at": "2026-10-24T03:03:09.665295+00:00",
+  "finished_at": "2026-10-24T03:03:09.672873+00:00",
+  "duration_seconds": 0.007542,
+  "timeout_seconds": 2.0,
+  "summary": {
+    "total": 1,
+    "open": 1,
+    "closed": 0,
+    "timeout": 0,
+    "error": 0
+  },
+  "results": [
+    {
+      "port": 8080,
+      "service": "unknown",
+      "status": "open"
+    }
+  ],
+  "open_ports": [
+    {
+      "port": 8080,
+      "service": "unknown"
+    }
+  ]
+}
