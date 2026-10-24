@@ -1,0 +1,47 @@
+# NetScope tests
+
+## Setup and run
+
+Use Python 3.11 or newer. In PowerShell, from the project directory:
+
+```powershell
+cd D:\Project\NetScope
+.\.venv\Scripts\python.exe -m pip install streamlit
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
+```
+
+Create `.venv` first with `python -m venv .venv` if it does not exist. Streamlit
+is the dashboard's existing dependency and supplies `streamlit.testing.v1.AppTest`;
+the test runner is Python's built-in `unittest`. No separate test package is needed.
+Dashboard tests require Streamlit to be installed; they are not silently skipped
+when it is missing.
+
+## Coverage
+
+- `test_localhost_restrictions.py`: both scanner entry points, rejected targets
+  before socket creation, DNS-free loopback connections, timeout configuration,
+  socket cleanup, real local listeners, and dashboard loopback configuration.
+- `test_scan_results.py`: success/refusal/timeout/error classification, Windows
+  error codes, socket-creation failures, unknown services, report counts and
+  timestamps, monotonic duration, JSON round-trip, boolean helper compatibility,
+  and command-line export into a temporary directory.
+- `test_dashboard.py`: initial screen without scanning, a real local scan,
+  open-port count and table, JSON download control and payload, an empty open-port
+  table with unsuccessful results still downloadable, and rejected-target feedback.
+
+## Safety and cleanup
+
+Real integration tests bind listeners to `127.0.0.1` using port `0`, allowing the
+operating system to select an available port. Context managers close the
+listeners even if an assertion fails. They need no administrator privileges or
+pre-existing services. Failure scenarios use mocks, and command-line reports
+are written in a temporary directory that is cleaned up after the test.
+
+No test connects to an external host. Unsupported target strings are tested
+through validation and mocked probes only. AppTest runs the dashboard in process;
+it does not launch a publicly reachable dashboard server. It verifies the download
+control and JSON supplied to Streamlit, rather than driving a browser save dialog.
+Streamlit may log a harmless missing `ScriptRunContext` warning in its testing mode.
+
+Extend these tests when Part 4 adds dashboard controls, session-state retention,
+filtering, and concurrent scans.
