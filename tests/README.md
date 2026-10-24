@@ -36,6 +36,14 @@ The requirements file is shared by the application and tests. It permits Streaml
   results, target/range rejection, failed-scan report clearing, and report retention
   across filtering, form edits, and reruns without another scan. Downloads remain
   complete when the table is filtered.
+- `test_reports.py`: current example compatibility, schema versions, byte/row
+  limits, malformed/duplicate JSON, invalid Unicode, numeric and timestamp bounds,
+  result/count/open-port consistency, mutation isolation, and a real new-scan
+  round-trip. Parser tests verify that loading opens neither files nor sockets.
+- `test_report_import.py`: native AppTest uploads, independent live/import controls,
+  invalid/oversized files, empty reports, normalized downloads, and import/filter
+  operations that never invoke the scanner. Streamlit's internal event-loop
+  socket pairs are left intact while the scanner probe boundary is mocked.
 
 ## Safety and cleanup
 

@@ -7,26 +7,17 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
+from reports import SCHEMA_VERSION
+from validation import (
+    MAX_PORTS, MIN_TIMEOUT, MAX_TIMEOUT,
+    loopback_address as _loopback_address,
+    validate_port as _validate_port,
+    validate_timeout as _validate_timeout,
+)
+
 PORTS = [21, 22, 25, 53, 80, 443, 3306, 8080]
-MAX_PORTS = 1024
 MAX_WORKERS = 32
-MIN_TIMEOUT = 0.05
-MAX_TIMEOUT = 2.0
 DEFAULT_TIMEOUT = 0.5
-
-def _loopback_address(target):
-    if not isinstance(target, str) or target not in ("127.0.0.1", "localhost"):
-        raise ValueError("Localhost scanning only")
-    return "127.0.0.1"
-
-def _validate_port(port):
-    if type(port) is not int or not 1 <= port <= 65535:
-        raise ValueError("Ports must be integers within 1–65535.")
-
-def _validate_timeout(timeout):
-    if (isinstance(timeout, bool) or not isinstance(timeout, (int, float))
-            or not MIN_TIMEOUT <= timeout <= MAX_TIMEOUT):
-        raise ValueError(f"Timeout must be {MIN_TIMEOUT}–{MAX_TIMEOUT} seconds.")
 
 def _ports_for_scan(start_port, end_port):
     if start_port is None and end_port is None:
@@ -102,6 +93,7 @@ def scan_target(target="127.0.0.1", *, start_port=None, end_port=None, timeout=D
     summary.update({status: sum(row["status"] == status for row in results)
                     for status in ("open", "closed", "timeout", "error")})
     return {
+        "schema_version": SCHEMA_VERSION,
         "target": target,
         "timestamp": started_at,
         "started_at": started_at,

@@ -18,7 +18,7 @@ Timeouts do not establish whether a port is closed. The dashboard shows status
 counts and all results, with an open-port filter. The download always contains
 the full report and the compatible `open_ports` list.
 
-Reports contain `target`, `timestamp`, `started_at`, `finished_at`,
+New reports include `schema_version: 1` alongside `target`, `timestamp`, `started_at`, `finished_at`,
 `duration_seconds`, `timeout_seconds`, `summary`, `results`, and `open_ports`.
 Each result has `port`, `service`, `status`, and an `error` message when applicable.
 
@@ -65,6 +65,13 @@ cd D:\Project\NetScope
 3. Choose the start/end ports and timeout, then click **Start Scan**.
 4. Review the status counts and table, or select **Show only open ports**.
 5. Click **Download JSON Report** to save the full results.
+
+To inspect an existing report, use **Import a saved report** and choose a JSON
+file up to **1 MiB** with at most **1,024 result rows**. Current version-1 and
+unversioned example reports are accepted. Imported evidence appears separately
+from your latest scan; importing never starts a scan or automatically saves a file.
+Invalid uploads leave the live report intact. See [the report format](docs/report-format.md)
+for validation rules and compatibility. Validation does not prove a report is authentic.
 
 Run from the project folder so `.streamlit/config.toml` is loaded. Its default
 address is `127.0.0.1`; the launch command also explicitly sets loopback. If port

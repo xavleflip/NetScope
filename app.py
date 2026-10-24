@@ -4,6 +4,33 @@ import json
 import streamlit as st
 
 from scanner import DEFAULT_TIMEOUT, MAX_PORTS, MAX_TIMEOUT, MAX_WORKERS, MIN_TIMEOUT, scan_target
+from reports import MAX_REPORT_BYTES, load_report
+
+
+def render_report(report, *, imported=False):
+    """Render live and imported evidence with independent controls and downloads."""
+    prefix = "imported" if imported else "scan"
+    st.subheader("Imported report" if imported else "Latest scan")
+    if imported:
+        st.caption("Imported observation, not a new scan. Validation checks format and "
+                   "consistency, not the authenticity of the measurements.")
+    st.caption(f"Target: {report['target']} · Ports checked: {report['summary']['total']} · "
+               f"Started: {report['started_at']} · "
+               f"Timeout: {report['timeout_seconds']:g}s · "
+               f"Duration: {report['duration_seconds']:.3f}s")
+    for column, status in zip(st.columns(4), ("open", "closed", "timeout", "error")):
+        column.metric("Open Ports" if status == "open" else status.title(),
+                      report["summary"][status])
+    only_open = st.checkbox("Show only open ports", key=f"{prefix}_only_open")
+    rows = [row for row in report["results"] if not only_open or row["status"] == "open"]
+    if rows:
+        st.dataframe(rows, hide_index=True)
+    else:
+        st.info("No open ports found in this scan." if only_open else "Report contains no port results.")
+    st.download_button("Download imported JSON report" if imported else "Download JSON Report",
+                       data=json.dumps(report, indent=2),
+                       file_name="imported-report.json" if imported else "scan.json",
+                       mime="application/json", on_click="ignore", key=f"{prefix}_download")
 
 
 st.set_page_config(page_title="NetScope", page_icon="🔐")
@@ -39,23 +66,17 @@ if submitted:
         st.error(str(exc))
 
 if "report" in st.session_state:
-    report = st.session_state.report
-    st.subheader("Latest scan")
-    first_port = report["results"][0]["port"]
-    last_port = report["results"][-1]["port"]
-    st.caption(f"Target: {report['target']} · Ports: {first_port}–{last_port} · "
-               f"Started: {report['started_at']} · "
-               f"Timeout: {report['timeout_seconds']:g}s · "
-               f"Duration: {report['duration_seconds']:.3f}s")
-    for column, status in zip(st.columns(4), ("open", "closed", "timeout", "error")):
-        column.metric("Open Ports" if status == "open" else status.title(),
-                      report["summary"][status])
+    render_report(st.session_state.report)
 
-    only_open = st.checkbox("Show only open ports", key="only_open")
-    rows = [row for row in report["results"] if not only_open or row["status"] == "open"]
-    if rows:
-        st.dataframe(rows, hide_index=True)
+st.subheader("Import a saved report")
+uploaded = st.file_uploader("Choose a NetScope JSON report", type=["json"],
+                             max_upload_size=1, key="report_upload",
+                             help="Up to 1 MiB and 1,024 result rows. Importing never starts a scan.")
+if uploaded is not None:
+    try:
+        uploaded.seek(0)
+        imported_report = load_report(uploaded.read(MAX_REPORT_BYTES + 1))
+    except ValueError as exc:
+        st.error(f"Import failed: {exc}")
     else:
-        st.info("No open ports found in this scan.")
-    st.download_button("Download JSON Report", data=json.dumps(report, indent=2),
-                       file_name="scan.json", mime="application/json", on_click="ignore")
+        render_report(imported_report, imported=True)
