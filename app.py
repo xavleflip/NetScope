@@ -3,8 +3,9 @@ import json
 
 import streamlit as st
 
-from scanner import DEFAULT_TIMEOUT, MAX_PORTS, MAX_TIMEOUT, MAX_WORKERS, MIN_TIMEOUT, scan_target
-from reports import MAX_REPORT_BYTES, load_report
+from scanner import DEFAULT_TIMEOUT, MAX_PORTS, MAX_TIMEOUT, MAX_WORKERS, MIN_TIMEOUT
+from reports import MAX_REPORT_BYTES, load_report, scan_details
+from jobs import ScanJob
 from history import HistoryError, delete_report, list_reports, load_saved_report, save_report
 from comparison import compare_reports
 
@@ -22,7 +23,19 @@ def render_report(report, *, source="scan", scan_id=None):
         "imported": ("Imported report", "Download imported JSON report", "imported-report.json"),
         "history": (f"Saved report #{scan_id}", "Download saved JSON report", f"saved-report-{scan_id}.json"),
     }[source]
+    details = scan_details(report)
+    cancelled = details["scan_status"] == "cancelled"
+    requested_count = len(details["requested_ports"])
+    completed = report["summary"]["total"]
+    if cancelled:
+        heading += " (cancelled)"
+        download_label += " (cancelled)"
+        filename = filename.replace(".json", "-cancelled.json")
     st.subheader(heading)
+    if cancelled:
+        st.warning(f"Cancelled scan: {completed}/{requested_count} probes completed; "
+                   f"{requested_count - completed} ports not scanned. This is cancelled evidence, not a successful full scan.")
+    st.caption(f"Scan status: {details['scan_status']} · Requested ports: {requested_count}")
     if source != "scan":
         description = "Imported" if source == "imported" else "Saved"
         st.caption(f"{description} observation, not a new scan. Validation checks format and "
@@ -42,12 +55,38 @@ def render_report(report, *, source="scan", scan_id=None):
         st.info("No open ports found in this scan." if only_open else "Report contains no port results.")
     st.download_button(download_label, data=json.dumps(report, indent=2), file_name=filename,
                        mime="application/json", on_click="ignore", key=f"{source}_download")
-    if source != "history" and st.button("Save report", key=f"{source}_save"):
+    if source != "history" and st.button("Save cancelled report" if cancelled else "Save report", key=f"{source}_save"):
         try:
             saved_id = save_report(report)
             st.success(f"Report is stored in local history as #{saved_id}.")
         except (HistoryError, ValueError) as exc:
             st.error(f"Save failed: {exc}")
+
+
+def render_active_scan():
+    job = st.session_state.get("scan_job")
+    if job is None:
+        return
+    job.poll()
+    if job.active:
+        cancelling = job.cancel_event.is_set()
+        label = "Cancelling scan; waiting for active probes" if cancelling else "Scanning"
+        st.progress(job.completed / job.total if job.total else 0,
+                    text=f"{label}: {job.completed}/{job.total} probes completed")
+        if st.button("Cancel scan", key=f"cancel_scan_{job.run_id}", disabled=cancelling):
+            job.cancel(job.run_id)
+            st.rerun()
+        return
+    # Only publish after the job and its socket workers have finished. A final
+    # drain after joining includes messages queued between poll() and exit.
+    job.join()
+    if st.session_state.get("scan_job") is job:
+        st.session_state.pop("scan_job", None)
+        if job.error is not None or job.report is None:
+            st.session_state.scan_error = f"Scan failed: {job.error or 'Job ended without a report.'}"
+        else:
+            st.session_state.report = job.report
+    st.rerun()
 
 
 def render_comparison():
@@ -101,13 +140,14 @@ def render_comparison():
     for role, label in (("baseline", "Earlier baseline"), ("observation", "Later observation")):
         report = comparison[role]
         metadata.append({"role": label, **{field: report[field] for field in (
-            "target", "started_at", "finished_at", "duration_seconds", "timeout_seconds",
-        )}, **report["summary"]})
+            "target", "started_at", "finished_at", "duration_seconds", "timeout_seconds", "scan_status",
+        )}, "requested": len(report["requested_ports"]), **report["summary"]})
     st.dataframe(metadata, hide_index=True)
     coverage = comparison["coverage"]
     st.caption(f"Coverage: {len(coverage['shared'])} shared ports · "
                f"{len(coverage['baseline_only'])} baseline only · "
                f"{len(coverage['observation_only'])} later only. "
+               f"{len(coverage['unobserved'])} requested but unobserved in both. "
                "Ports missing from either observation are not scanned.")
     for note in comparison["notes"]:
         st.warning(note)
@@ -130,6 +170,7 @@ def render_comparison():
 def render_history():
     st.subheader("Local history")
     st.caption("Saving is explicit. Local history is unencrypted and may reveal service information.")
+    st.caption("History counts describe completed probes. Select an entry for its scan status and requested coverage.")
     try:
         entries = list_reports()
     except HistoryError as exc:
@@ -182,6 +223,7 @@ st.caption("Localhost TCP Port Scanner")
 st.caption("Service labels are conventional port assignments, not detected software. "
            "Timeouts do not prove a port is closed.")
 
+busy = st.session_state.get("scan_job") is not None
 with st.form("scan"):
     target = st.text_input("Target", value="127.0.0.1")
     left, right = st.columns(2)
@@ -194,21 +236,28 @@ with st.form("scan"):
                               value=DEFAULT_TIMEOUT, step=0.05, key="timeout")
     st.caption(f"Only 127.0.0.1 and localhost are accepted. Scan at most {MAX_PORTS} "
                f"ports, with up to {MAX_WORKERS} concurrent connections per scan.")
-    submitted = st.form_submit_button("Start Scan")
+    submitted = st.form_submit_button("Start Scan", disabled=busy)
 
-if submitted:
+if submitted and not busy:
     # A failed new scan must not leave an older report looking like its result.
     st.session_state.pop("report", None)
+    st.session_state.pop("scan_error", None)
     try:
-        with st.spinner("Scanning..."):
-            st.session_state.report = scan_target(
-                target, start_port=start_port, end_port=end_port, timeout=timeout,
-            )
-        st.success("Scan completed")
-    except ValueError as exc:
-        st.error(str(exc))
+        st.session_state.scan_job = ScanJob(
+            target, start_port=start_port, end_port=end_port, timeout=timeout)
+    except (ValueError, RuntimeError, OSError) as exc:
+        st.session_state.scan_error = str(exc)
+    else:
+        st.rerun()
+
+st.fragment(run_every=0.2 if st.session_state.get("scan_job") is not None else None)(render_active_scan)()
+
+if "scan_error" in st.session_state:
+    st.error(st.session_state.scan_error)
 
 if "report" in st.session_state:
+    if scan_details(st.session_state.report)["scan_status"] == "completed":
+        st.success("Scan completed")
     render_report(st.session_state.report)
 
 st.subheader("Import a saved report")

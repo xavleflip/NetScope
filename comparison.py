@@ -2,7 +2,7 @@
 
 from datetime import datetime
 
-from reports import validate_report
+from reports import scan_details, validate_report
 from validation import loopback_address
 
 
@@ -20,9 +20,9 @@ def _interpretation(before, after):
 
 
 def _metadata(report):
-    return {field: report[field] for field in (
+    return {**{field: report[field] for field in (
         "target", "started_at", "finished_at", "duration_seconds", "timeout_seconds", "summary",
-    )}
+    )}, **scan_details(report)}
 
 
 def compare_reports(baseline, observation):
@@ -42,12 +42,13 @@ def compare_reports(baseline, observation):
     before_rows = {row["port"]: row for row in baseline["results"]}
     after_rows = {row["port"]: row for row in observation["results"]}
     before_ports, after_ports = set(before_rows), set(after_rows)
+    requested = set(scan_details(baseline)["requested_ports"]) | set(scan_details(observation)["requested_ports"])
     summary = dict.fromkeys((
         "total", "status_changed", "status_unchanged", "not_scanned", "uncertain",
         "service_label_changed",
     ), 0)
     rows = []
-    for port in sorted(before_ports | after_ports):
+    for port in sorted(requested):
         before = before_rows.get(port, {})
         after = after_rows.get(port, {})
         before_status = before.get("status", "not scanned")
@@ -84,19 +85,24 @@ def compare_reports(baseline, observation):
         "shared": sorted(before_ports & after_ports),
         "baseline_only": sorted(before_ports - after_ports),
         "observation_only": sorted(after_ports - before_ports),
+        "unobserved": sorted(requested - before_ports - after_ports),
     }
     timeouts_differ = baseline["timeout_seconds"] != observation["timeout_seconds"]
     notes = []
+    if any(scan_details(report)["scan_status"] == "cancelled" for report in (baseline, observation)):
+        notes.append("Cancelled scan included: only completed probes are observations; remaining requested ports are not scanned.")
     if earlier == later:
         notes.append("Scan start times are equal; timestamps do not establish an earlier/later order.")
     elif datetime.fromisoformat(baseline["finished_at"]) > later:
         notes.append("Scan time windows overlap; roles are ordered by scan start time.")
     if coverage["baseline_only"] or coverage["observation_only"]:
         notes.append("Scan coverage differs. Missing ports are not scanned, not closed.")
+    if coverage["unobserved"]:
+        notes.append("Some requested ports have no completed probe in either report; they remain not scanned.")
     if timeouts_differ:
         notes.append("Connection timeout settings differ; outcomes may not be directly comparable.")
     return {
-        "comparison_version": 1,
+        "comparison_version": 2,
         "target": loopback_address(baseline["target"]),
         "baseline": _metadata(baseline),
         "observation": _metadata(observation),

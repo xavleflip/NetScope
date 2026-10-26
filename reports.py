@@ -8,7 +8,7 @@ import re
 from validation import MAX_PORTS, loopback_address, validate_port, validate_timeout
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 MAX_REPORT_BYTES = 1024 * 1024
 STATUSES = ("open", "closed", "timeout", "error")
 _FIELDS = {
@@ -59,16 +59,19 @@ def _duration(value):
 
 
 def validate_report(report):
-    """Return an independent version-1 report; never mutate the input.
+    """Return an independent version-1 or version-2 report; never mutate input.
 
     Unversioned reports with the current legacy shape are version 1. Validation
     establishes structure and internal consistency, not measurement authenticity.
     Use load_report for the byte-size boundary on external JSON.
     """
-    _check_fields(report, _FIELDS, "Report", optional={"schema_version"})
-    version = report.get("schema_version", SCHEMA_VERSION)
-    if type(version) is not int or version != SCHEMA_VERSION:
-        raise ValueError("Unsupported schema_version; only version 1 is accepted.")
+    if not isinstance(report, dict):
+        raise ValueError("Report must be a JSON object.")
+    version = report.get("schema_version", 1)
+    if type(version) is not int or version not in (1, 2):
+        raise ValueError("Unsupported schema_version; only versions 1 and 2 are accepted.")
+    fields = _FIELDS | ({"scan_status", "requested_ports"} if version == 2 else set())
+    _check_fields(report, fields, "Report", optional={"schema_version"})
     loopback_address(report["target"])
     started = _timestamp(report["started_at"], "started_at")
     timestamp = _timestamp(report["timestamp"], "timestamp")
@@ -132,8 +135,27 @@ def validate_report(report):
     if open_by_port != {row["port"]: row["service"] for row in expected_open}:
         raise ValueError("open_ports does not agree with the open results.")
 
+    details = {}
+    if version == 2:
+        status = report["scan_status"]
+        if not isinstance(status, str) or status not in ("completed", "cancelled"):
+            raise ValueError("scan_status must be completed or cancelled.")
+        requested = report["requested_ports"]
+        if not isinstance(requested, list) or len(requested) > MAX_PORTS:
+            raise ValueError(f"requested_ports must be a list of at most {MAX_PORTS} ports.")
+        for port in requested:
+            validate_port(port)
+        if len(set(requested)) != len(requested):
+            raise ValueError("requested_ports must not contain duplicates.")
+        if not ports <= set(requested):
+            raise ValueError("Results contain ports that were not requested.")
+        if status == "completed" and ports != set(requested):
+            raise ValueError("A completed scan must contain a result for every requested port.")
+        details = {"scan_status": status, "requested_ports": list(requested)}
+
     return {
-        "schema_version": SCHEMA_VERSION,
+        "schema_version": version,
+        **details,
         "target": report["target"],
         "timestamp": timestamp.isoformat(),
         "started_at": started.isoformat(),
@@ -143,6 +165,14 @@ def validate_report(report):
         "summary": expected_summary,
         "results": results,
         "open_ports": expected_open,
+    }
+
+
+def scan_details(report):
+    """Describe validated reports uniformly without rewriting legacy payloads."""
+    return {
+        "scan_status": report.get("scan_status", "completed"),
+        "requested_ports": list(report.get("requested_ports", [row["port"] for row in report["results"]])),
     }
 
 

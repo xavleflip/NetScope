@@ -3,9 +3,10 @@ import socket
 import json
 import errno
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import datetime, timezone
 from pathlib import Path
+from threading import Event
 
 from reports import SCHEMA_VERSION
 from validation import (
@@ -71,29 +72,85 @@ def scan_port(target, port, timeout=DEFAULT_TIMEOUT):
     """Preserve the original boolean helper; detailed outcomes live in reports."""
     return _scan_port_result(target, port, timeout)["status"] == "open"
 
-def scan_target(target="127.0.0.1", *, start_port=None, end_port=None, timeout=DEFAULT_TIMEOUT):
+def validate_scan_request(target="127.0.0.1", *, start_port=None, end_port=None, timeout=DEFAULT_TIMEOUT):
+    """Validate before launching work, and return the finite requested port list."""
+    _loopback_address(target)
+    _validate_timeout(timeout)
+    ports = tuple(_ports_for_scan(start_port, end_port))
+    if len(set(ports)) != len(ports):
+        raise ValueError("Requested ports must be unique.")
+    return ports
+
+
+def scan_target(target="127.0.0.1", *, start_port=None, end_port=None, timeout=DEFAULT_TIMEOUT,
+                cancel_event=None, on_progress=None):
     """Scan the inclusive range, or the original common ports if no range is given.
 
     All inputs are checked before any probes. At most MAX_WORKERS sockets run
-    concurrently, and results retain input order regardless of completion order.
+    concurrently, with at most that many futures in flight. Results retain input
+    order regardless of completion order. on_progress(completed, total) runs on
+    this caller's thread, including after cancellation as active probes finish.
+    A set cancel_event stops scheduling and skips probes not yet started; active
+    sockets retain their finite timeout. Return only after all workers are joined.
     """
     # Validate even when no ports are configured; scan_port also guards direct use.
-    _loopback_address(target)
-    _validate_timeout(timeout)
-    ports = _ports_for_scan(start_port, end_port)
+    ports = validate_scan_request(target, start_port=start_port, end_port=end_port, timeout=timeout)
+    cancel_event = cancel_event if cancel_event is not None else Event()
 
     started_at = datetime.now(timezone.utc).isoformat()
     started = time.perf_counter()
-    results = []
-    if ports:
-        with ThreadPoolExecutor(max_workers=min(MAX_WORKERS, len(ports))) as pool:
-            results = list(pool.map(lambda port: _scan_port_result(target, port, timeout), ports))
+    observed = {}
+    if on_progress is not None:
+        on_progress(0, len(ports))
+    if ports and not cancel_event.is_set():
+        pool = ThreadPoolExecutor(max_workers=min(MAX_WORKERS, len(ports)), thread_name_prefix="netscope-probe")
+        pending = set()
+        remaining = iter(ports)
+
+        def probe(port):
+            # A submitted probe may still be waiting for its worker to start.
+            if cancel_event.is_set():
+                return None
+            return _scan_port_result(target, port, timeout)
+
+        def fill_window():
+            while len(pending) < MAX_WORKERS and not cancel_event.is_set():
+                port = next(remaining, None)
+                if port is None:
+                    break
+                pending.add(pool.submit(probe, port))
+
+        try:
+            fill_window()
+            while pending:
+                if cancel_event.is_set():
+                    for future in pending:
+                        future.cancel()
+                done, _ = wait(pending, timeout=0.05, return_when=FIRST_COMPLETED)
+                pending.difference_update(done)
+                for future in done:
+                    if future.cancelled():
+                        continue
+                    row = future.result()
+                    if row is not None:
+                        observed[row["port"]] = row
+                        if on_progress is not None:
+                            on_progress(len(observed), len(ports))
+                fill_window()
+        except BaseException:
+            cancel_event.set()
+            raise
+        finally:
+            pool.shutdown(wait=True, cancel_futures=True)
+    results = [observed[port] for port in ports if port in observed]
     duration = time.perf_counter() - started
     summary = {"total": len(results)}
     summary.update({status: sum(row["status"] == status for row in results)
                     for status in ("open", "closed", "timeout", "error")})
     return {
         "schema_version": SCHEMA_VERSION,
+        "scan_status": "cancelled" if cancel_event.is_set() else "completed",
+        "requested_ports": list(ports),
         "target": target,
         "timestamp": started_at,
         "started_at": started_at,
