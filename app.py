@@ -8,6 +8,7 @@ from reports import MAX_REPORT_BYTES, load_report, scan_details
 from jobs import ScanJob
 from history import HistoryError, delete_report, list_reports, load_saved_report, save_report
 from comparison import compare_reports
+from exports import serialize_report
 
 
 def read_uploaded_report(uploaded):
@@ -53,7 +54,10 @@ def render_report(report, *, source="scan", scan_id=None):
         st.dataframe(rows, hide_index=True)
     else:
         st.info("No open ports found in this scan." if only_open else "Report contains no port results.")
-    st.download_button(download_label, data=json.dumps(report, indent=2), file_name=filename,
+    st.download_button(download_label.replace("JSON", "CSV"), data=serialize_report(report, "csv"),
+                       file_name=filename.replace(".json", ".csv"), mime="text/csv",
+                       on_click="ignore", key=f"{source}_csv_download")
+    st.download_button(download_label, data=serialize_report(report), file_name=filename,
                        mime="application/json", on_click="ignore", key=f"{source}_download")
     if source != "history" and st.button("Save cancelled report" if cancelled else "Save report", key=f"{source}_save"):
         try:

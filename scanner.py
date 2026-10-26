@@ -1,11 +1,9 @@
 
 import socket
-import json
 import errno
 import time
 from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 from datetime import datetime, timezone
-from pathlib import Path
 from threading import Event
 
 from reports import SCHEMA_VERSION
@@ -164,11 +162,5 @@ def scan_target(target="127.0.0.1", *, start_port=None, end_port=None, timeout=D
     }
 
 if __name__ == "__main__":
-    result = scan_target()
-    print(json.dumps(result, indent=2))
-
-    Path("reports").mkdir(exist_ok=True)
-    Path("reports/scan.json").write_text(
-        json.dumps(result, indent=2),
-        encoding="utf-8"
-    )
+    from cli import main
+    raise SystemExit(main())

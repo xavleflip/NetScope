@@ -5,6 +5,7 @@ from io import StringIO
 import json
 from pathlib import Path
 import runpy
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -115,9 +116,11 @@ class ScanResultTests(unittest.TestCase):
         output = StringIO()
         with tempfile.TemporaryDirectory() as directory, chdir(directory), redirect_stdout(output), patch(
             "socket.socket"
-        ) as factory, patch("socket.getservbyport", return_value="test-service"):
+        ) as factory, patch("socket.getservbyport", return_value="test-service"), patch.object(sys, "argv", [str(scanner_path)]):
             factory.return_value.__enter__.return_value.connect.side_effect = TimeoutError("slow")
-            runpy.run_path(str(scanner_path), run_name="__main__")
+            with self.assertRaises(SystemExit) as exited:
+                runpy.run_path(str(scanner_path), run_name="__main__")
+            self.assertEqual(exited.exception.code, 0)
             saved = json.loads(Path("reports/scan.json").read_text(encoding="utf-8"))
         self.assertEqual(json.loads(output.getvalue()), saved)
         self.assertEqual(saved["summary"]["timeout"], 8)

@@ -67,7 +67,7 @@ class ReportImportTests(unittest.TestCase):
             self.assertIn("Import failed", app.error[0].value)
             self.assertEqual(app.session_state["report"], original)
             self.assertEqual(app.dataframe[0].value["port"].tolist(), [80])
-            self.assertEqual(len(app.get("download_button")), 1)
+            self.assertEqual(len(app.get("download_button")), 2)
             scan.assert_not_called()
             probe.assert_not_called()
 
@@ -84,7 +84,7 @@ class ReportImportTests(unittest.TestCase):
             app.file_uploader[0].set_value(("legacy.json", self.data, "application/json")).run()
             self.assertFalse(app.exception)
             self.assertEqual(len(app.checkbox), 2)
-            self.assertEqual(len(app.get("download_button")), 2)
+            self.assertEqual(len(app.get("download_button")), 4)
             app.checkbox(key="imported_only_open").check().run()
             self.assertFalse(app.checkbox(key="scan_only_open").value)
             self.assertEqual(app.dataframe[0].value["status"].tolist(), ["closed"])
@@ -100,7 +100,7 @@ class ReportImportTests(unittest.TestCase):
             app.file_uploader[0].set_value(("empty.json", json.dumps(report).encode(), "application/json")).run()
             self.assertFalse(app.exception)
             self.assertEqual(app.info[0].value, "Report contains no port results.")
-            self.assertEqual(len(app.get("download_button")), 1)
+            self.assertEqual(len(app.get("download_button")), 2)
             probe.assert_not_called()
 
     def test_oversized_and_invalid_target_uploads_are_rejected(self):
