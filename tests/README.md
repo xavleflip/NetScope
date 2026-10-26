@@ -62,6 +62,19 @@ The requirements file is shared by the application and tests. It permits Streaml
   reversed dates, settings/coverage warnings, identical/empty reports, source
   changes, stale deleted selections, and storage failures. Scanner and history-save
   boundaries reject accidental calls; every history database is temporary.
+- `test_cancellation.py`: cancellation before work, blocked real socket boundaries,
+  queued probes, and completion; bounded submissions, monotonic progress, partial
+  accounting/order, socket closure, and joined workers on probe/callback failure.
+- `test_jobs.py`: validation before thread launch, independent job queues/events,
+  stale message/cancel IDs, finite completion without a UI consumer, non-daemon
+  coordinator threads, and terminal failure messages.
+- `test_partial_reports.py`: version-2 completion/requested-port validation,
+  zero/partial/all-done cancelled reports, strict version-specific fields,
+  legacy version-1 preservation, mixed-version SQLite round-trips without migration,
+  duplicate identities, and requested ports unobserved in both comparison inputs.
+- `test_scan_jobs_dashboard.py`: progress, cancellation, blocked resubmission during
+  cleanup, form/request state, two-session isolation, startup/worker failures and
+  recovery, clearly labelled cancelled downloads/saves, and imported partial reports.
 
 ## Safety and cleanup
 
@@ -87,3 +100,8 @@ Streamlit may log a harmless missing `ScriptRunContext` warning in its testing m
 Concurrency tests coordinate workers with events rather than timing sleeps and
 verify every simulated socket is closed across all four outcomes. Outcomes are
 tied to port numbers so tests do not depend on thread scheduling order.
+
+`dashboard_helpers.finish_scan` joins a test's finite background job before
+rendering its terminal screen. AppTest does not simulate periodic browser ticks;
+progress/cancel tests explicitly rerun while event-controlled probes are blocked.
+Their `finally` blocks release probes and join jobs even after failed assertions.

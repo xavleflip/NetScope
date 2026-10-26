@@ -1,8 +1,9 @@
 # Report format and imports
 
-New NetScope reports include `schema_version: 1` alongside the existing report
-fields. The dashboard can import either version 1 or the current unversioned
-legacy shape, such as the two files under `examples/`. Other versions are rejected.
+New NetScope reports use `schema_version: 2`, adding cancellation status and the
+requested port list while preserving existing report fields. The dashboard also
+accepts version 1 and the supported unversioned legacy shape, such as the two
+files under `examples/`. Other versions are rejected.
 
 ## Import a report
 
@@ -24,11 +25,11 @@ Use **Save report** to explicitly add validated evidence to
 Validation checks structure and consistency, not the authenticity of observations:
 someone can edit a structurally valid report.
 
-## Version-1 fields
+## Shared fields
 
 | Field | Required value |
 | --- | --- |
-| `schema_version` | Integer `1`; absence denotes the current legacy shape. |
+| `schema_version` | Integer `1` or `2`; absence denotes the supported version-1 legacy shape. |
 | `target` | Exactly `127.0.0.1` or `localhost`. |
 | `timestamp` | UTC scan-start timestamp, describing the same instant as `started_at`. |
 | `started_at` | UTC scan-start timestamp. |
@@ -57,14 +58,36 @@ The older prototype containing only `target`, `timestamp`, and `open_ports` lack
 the detailed results needed for this validation and is not the supported legacy
 shape. Unknown future fields require an explicitly supported schema version.
 
+## Version-2 cancellation fields
+
+Version 2 also requires `scan_status` (`completed` or `cancelled`) and
+`requested_ports`, a list of at most 1,024 unique integer ports within 1–65535.
+Every result port must appear in that list. For a completed scan, the requested
+and observed port sets must match. Cancelled scans may have zero, some, or all
+requested results; their counts still describe only completed probes.
+
+Requested ports without results are **not scanned**, never implicitly closed.
+Invalid statuses, missing fields, duplicates, booleans/floats used as ports,
+unrequested results, and incomplete scans labelled completed are rejected.
+Version-1/unversioned reports cannot include the new fields: they are treated
+as completed legacy evidence over their recorded results and retain version 1.
+This preserves existing saved payloads and their duplicate identities.
+
+Live/imported/history views visibly label cancelled evidence. Cancelled downloads
+include the label in their filename and control; saving uses **Save cancelled
+report**. See [progress and cancellation](progress-and-cancellation.md).
+
 ## Implementation boundary
 
 - `validation.py` owns the shared target, port, and timeout policy.
 - `scanner.py` creates reports and adds the current version while preserving
   its entry points and existing report fields.
+- `jobs.py` coordinates finite background scans through run-tagged queues and
+  cancellation events; it contains no Streamlit calls.
 - `reports.py` owns `load_report(bytes)` and `validate_report(dict)`. The loader
   enforces the byte limit before parsing; the validator returns an independent
   normalized dictionary without mutating the input. Neither API opens files or sockets.
+  `scan_details` describes completion status/requested ports uniformly for both versions.
 - `app.py` reads the bounded upload and displays values using ordinary Streamlit
   components, with fixed download filenames and independent live/import/history controls.
 - `history.py` validates reports before storing them and revalidates on reopen.

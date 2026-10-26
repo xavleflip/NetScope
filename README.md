@@ -20,8 +20,10 @@ Timeouts do not establish whether a port is closed. The dashboard shows status
 counts and all results, with an open-port filter. The download always contains
 the full report and the compatible `open_ports` list.
 
-New reports include `schema_version: 1` alongside `target`, `timestamp`, `started_at`, `finished_at`,
-`duration_seconds`, `timeout_seconds`, `summary`, `results`, and `open_ports`.
+New reports include `schema_version: 2`, `scan_status`, and `requested_ports`, alongside
+`target`, `timestamp`, `started_at`, `finished_at`, `duration_seconds`, `timeout_seconds`,
+`summary`, `results`, and `open_ports`. Counts include only completed probes;
+requested ports without results are **not scanned**.
 Each result has `port`, `service`, `status`, and an `error` message when applicable.
 
 Use only on a computer you own or are authorized to test. This project checks TCP
@@ -68,8 +70,14 @@ cd D:\Project\NetScope
 4. Review the status counts and table, or select **Show only open ports**.
 5. Click **Download JSON Report** to save the full results.
 
+While running, the dashboard shows completed/total progress and **Cancel scan**.
+Cancellation stops new probes and waits for active connections to finish. **Start
+Scan** stays disabled until cleanup finishes. Cancelled results are clearly labelled
+and can be downloaded or saved with **Save cancelled report**. See
+[progress and cancellation](docs/progress-and-cancellation.md) for details.
+
 To inspect an existing report, use **Import a saved report** and choose a JSON
-file up to **1 MiB** with at most **1,024 result rows**. Current version-1 and
+file up to **1 MiB** with at most **1,024 result rows**. Version-2, version-1, and
 unversioned example reports are accepted. Imported evidence appears separately
 from your latest scan; importing never starts a scan or automatically saves a file.
 Invalid uploads leave the live report intact. See [the report format](docs/report-format.md)

@@ -76,15 +76,22 @@ files. Use only a machine you own or have explicit permission to test.
 ```mermaid
 flowchart TD
     form[Streamlit scan form] --> validation[Scanner target, port, and timeout validation]
-    validation --> probes[Up to 32 TCP connection probes per scan]
+    validation --> job[Session scan job and cancellation event]
+    job --> probes[Up to 32 in-flight TCP connection probes]
+    probes --> progress[Run-tagged progress messages]
+    progress --> fragment[Streamlit progress and cancel fragment]
+    fragment --> job
     probes --> loopback[IPv4 loopback only]
     probes --> report[Ordered JSON-compatible report]
     report --> session[Completed report in session state]
     session --> table[Status counts and filtered table]
-    session --> download[Complete JSON download]
+    session --> download[JSON download with completion status]
+    session --> history[Explicit SQLite save]
+    history --> compare[Validated report comparison]
 ```
 
-`app.py` owns the form, session report, presentation, and download. `scanner.py`
+`app.py` owns the form, session report, UI fragment, presentation, and download.
+`jobs.py` owns the finite coordinator thread and run-tagged queue. `scanner.py`
 owns target validation, port/time limits, socket lifetimes, connection outcomes,
 and report construction. The boolean `scan_port()` helper remains available, and
 `scan_target()` without a range preserves the original eight-port selection.
@@ -103,8 +110,10 @@ and report construction. The boolean `scan_port()` helper remains available, and
 - The 0.05–2 second timeout applies to each connection, not the entire scan.
   At most 1,024 ports and 32 concurrent connections are allowed per scan; separate
   dashboard sessions can run separate scans.
-- Reports are point-in-time observations. The dashboard keeps its latest report
-  in session state; it has no permanent history, progress control, or cancellation.
+- Reports are point-in-time observations. Progress and cancellation are available;
+  only an explicit save keeps a report in local history. Cancelled reports contain
+  completed probes and mark remaining requested ports as not scanned. History is
+  unencrypted; comparison does not establish continuous service availability.
 - Python 3.14.7 on Windows was verified. Other documented Python versions and
   operating systems have not yet been verified.
 

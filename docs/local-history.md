@@ -21,6 +21,12 @@ Repeated saves of the same normalized report return the same ID without adding
 another row. A new observation with different timestamps is a distinct report.
 IDs remain stable while stored and are not reused after deletion.
 
+Cancelled version-2 reports can be saved using **Save cancelled report**. Their
+status and requested ports survive restart; reopened reports and downloads retain
+the visible cancelled label. History table counts describe completed probes only;
+select an entry to review its status and requested coverage. See
+[progress and cancellation](progress-and-cancellation.md).
+
 To inspect changes between two saved observations, use **Compare reports → Saved
 history** and select the earlier baseline and later observation. See
 [comparing reports](scan-comparison.md) for missing-coverage and uncertainty rules.
@@ -106,6 +112,9 @@ version. An empty database can be initialized on save. Unrecognized existing
 schemas and unsupported versions fail without being reset. No data migration
 is needed or implemented in this release. Any future migration that changes
 stored data must begin with a verified backup and a recovery procedure.
+
+Report versions 1 and 2 coexist in the same database schema. Adding cancellation
+metadata required no database migration or rewrite of previously saved reports.
 
 ## Verification
 

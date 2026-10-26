@@ -29,7 +29,7 @@ and ordinary report import remain independent of comparison controls.
 
 ## Interpret the evidence
 
-The table includes the union of ports, sorted numerically. It shows before/after
+The table includes the union of requested ports, sorted numerically. It shows before/after
 statuses, conventional service labels, error details, and an interpretation.
 
 | Before → after | Meaning |
@@ -47,8 +47,9 @@ labels are conventional port assignments. A changed label is shown separately
 and does not identify a change of software or a vulnerability.
 
 The input table preserves each target spelling, start/end times, duration,
-timeout setting, total ports, and outcome counts. Coverage shows shared ports
-and ports checked in only one report. Different coverage and timeout settings
+timeout setting, scan status, requested-port count, completed total, and outcome
+counts. Coverage shows shared observations, ports checked in only one report,
+and requested ports observed in neither. Different coverage and timeout settings
 produce warnings; NetScope does not silently discard unmatched ports or adjust
 measurements to make them agree.
 
@@ -57,13 +58,18 @@ The summary counts mean:
 - **Status changed**: a shared port has different statuses.
 - **Status unchanged**: a shared port has the same status, even if its service
   label or error detail changed.
-- **Missing coverage**: a port is absent from one report.
+- **Missing coverage**: a requested port has no result in one or both reports.
 - **Uncertain outcomes**: at least one recorded status is `timeout` or `error`.
   This count overlaps the other categories; it is not an additional partition.
 
 Changed, unchanged, and missing-coverage counts sum to the total union of ports.
 Service-label changes have a separate count and flag. Missing coverage does not
 count as a status change, including when the only observed result is open.
+
+Cancelled inputs produce a visible warning. Unfinished requested ports remain
+**not scanned**, including when neither report completed a probe for that port.
+Legacy reports are treated as completed over their recorded ports; no wider
+requested range is inferred. See [cancellation semantics](progress-and-cancellation.md).
 
 ## Example and download format
 
@@ -76,10 +82,10 @@ The fixed download filename is `comparison.json`. Its top-level fields are:
 
 | Field | Contents |
 | --- | --- |
-| `comparison_version` | Integer `1`, independent of the scan-report schema version. |
+| `comparison_version` | Integer `2`, independent of the scan-report schema version; adds cancellation/requested-coverage semantics. |
 | `target` | Canonical matching address, `127.0.0.1`. |
-| `baseline`, `observation` | Each input's target, start/end times, duration, timeout, and summary. |
-| `coverage` | Sorted `shared`, `baseline_only`, and `observation_only` port lists. |
+| `baseline`, `observation` | Each input's target, start/end times, duration, timeout, summary, scan status, and requested ports. |
+| `coverage` | Sorted `shared`, `baseline_only`, `observation_only`, and `unobserved` lists based on completed probes. |
 | `timeouts_differ` | Whether connection timeout settings differ. |
 | `notes` | Equal/overlapping time, coverage, or timeout-setting explanations. |
 | `summary` | Total, status-change, unchanged, missing, uncertain, and label-change counts. |
