@@ -10,6 +10,7 @@ from streamlit.testing.v1 import AppTest
 
 from history import HistoryError, list_reports, save_report
 from reports import load_report
+from dashboard_helpers import finish_scan
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -50,6 +51,7 @@ class HistoryDashboardTests(unittest.TestCase):
             app.number_input(key="start_port").set_value(port)
             app.number_input(key="end_port").set_value(port)
             app.button[0].click().run()
+            finish_scan(app)
         self.assertFalse(self.db.exists())
         expected = app.session_state["report"]
         app.button(key="scan_save").click().run()

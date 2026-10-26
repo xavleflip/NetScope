@@ -30,7 +30,7 @@ class ComparisonTests(unittest.TestCase):
     def test_recorded_examples_preserve_open_to_timeout_uncertainty(self):
         comparison = compare_reports(self.before, self.after)
         self.assertEqual(comparison["target"], "127.0.0.1")
-        self.assertEqual(comparison["coverage"], {"shared": [8080], "baseline_only": [], "observation_only": []})
+        self.assertEqual(comparison["coverage"], {"shared": [8080], "baseline_only": [], "observation_only": [], "unobserved": []})
         self.assertEqual(comparison["summary"], {
             "total": 1, "status_changed": 1, "status_unchanged": 0,
             "not_scanned": 0, "uncertain": 1, "service_label_changed": 0,
@@ -76,7 +76,7 @@ class ComparisonTests(unittest.TestCase):
             {"port": 80, "service": "http", "status": "closed"},
         ], later=True)
         comparison = compare_reports(baseline, observation)
-        self.assertEqual(comparison["coverage"], {"shared": [80], "baseline_only": [1], "observation_only": [65535]})
+        self.assertEqual(comparison["coverage"], {"shared": [80], "baseline_only": [1], "observation_only": [65535], "unobserved": []})
         rows = comparison["results"]
         self.assertEqual([row["port"] for row in rows], [1, 80, 65535])
         self.assertEqual((rows[0]["before_status"], rows[0]["after_status"]), ("closed", "not scanned"))

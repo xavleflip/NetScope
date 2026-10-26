@@ -50,11 +50,11 @@ class ReportTests(unittest.TestCase):
             listener.listen(1)
             port = listener.getsockname()[1]
             report = scan_target("localhost", start_port=port, end_port=port, timeout=0.1)
-        self.assertEqual(report["schema_version"], 1)
+        self.assertEqual(report["schema_version"], 2)
         self.assertEqual(load_report(json.dumps(report).encode("utf-8")), report)
 
     def test_version_types_and_unsupported_versions_are_rejected(self):
-        for version in (0, 2, -1, True, 1.0, "1", None, []):
+        for version in (0, 3, -1, True, 1.0, "1", None, []):
             with self.subTest(version=version):
                 self.reject({**self.report, "schema_version": version})
 
