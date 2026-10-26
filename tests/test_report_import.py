@@ -8,6 +8,7 @@ import streamlit as st
 from streamlit.testing.v1 import AppTest
 
 from reports import MAX_REPORT_BYTES
+from dashboard_helpers import finish_scan
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -58,6 +59,7 @@ class ReportImportTests(unittest.TestCase):
             app.number_input(key="start_port").set_value(80)
             app.number_input(key="end_port").set_value(80)
             app.button[0].click().run()
+            finish_scan(app)
         original = app.session_state["report"]
         with patch("scanner.scan_target") as scan, patch("scanner._scan_port_result") as probe:
             app.file_uploader[0].set_value(("broken.json", b"{}", "application/json")).run()
@@ -77,6 +79,7 @@ class ReportImportTests(unittest.TestCase):
             app.number_input(key="start_port").set_value(80)
             app.number_input(key="end_port").set_value(80)
             app.button[0].click().run()
+            finish_scan(app)
         with patch("scanner.scan_target") as scan:
             app.file_uploader[0].set_value(("legacy.json", self.data, "application/json")).run()
             self.assertFalse(app.exception)

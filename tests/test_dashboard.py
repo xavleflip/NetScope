@@ -8,6 +8,7 @@ from unittest.mock import patch
 import streamlit as st
 from streamlit.testing.v1 import AppTest
 from scanner import scan_target
+from dashboard_helpers import finish_scan
 
 
 APP_PATH = Path(__file__).resolve().parents[1] / "app.py"
@@ -47,6 +48,7 @@ class DashboardTests(unittest.TestCase):
                 app.number_input(key="end_port").set_value(port)
                 app.number_input(key="timeout").set_value(0.1)
                 app.button[0].click().run()
+                finish_scan(app)
 
         self.assertFalse(app.exception)
         self.assertEqual(app.success[0].value, "Scan completed")
@@ -80,6 +82,7 @@ class DashboardTests(unittest.TestCase):
             app.number_input(key="start_port").set_value(80)
             app.number_input(key="end_port").set_value(81)
             app.button[0].click().run()
+            finish_scan(app)
             self.assertEqual(len(app.dataframe[0].value), 2)
             download.reset_mock()
             app.checkbox[0].check().run()
@@ -126,6 +129,7 @@ class DashboardTests(unittest.TestCase):
             app.number_input(key="start_port").set_value(80)
             app.number_input(key="end_port").set_value(83)
             app.button[0].click().run()
+            finish_scan(app)
             self.assertFalse(app.exception)
             report = json.loads(download.call_args.kwargs["data"])
             self.assertEqual([metric.value for metric in app.metric], ["1", "1", "1", "1"])
@@ -139,7 +143,10 @@ class DashboardTests(unittest.TestCase):
             # Editing the form also must not replace the saved report until submission.
             app.text_input[0].set_value("localhost").run()
             self.assertFalse(app.exception)
-            scan.assert_called_once_with("127.0.0.1", start_port=80, end_port=83, timeout=0.5)
+            scan.assert_called_once()
+            self.assertEqual(scan.call_args.args, ("127.0.0.1",))
+            self.assertEqual({key: scan.call_args.kwargs[key] for key in ("start_port", "end_port", "timeout")},
+                             {"start_port": 80, "end_port": 83, "timeout": 0.5})
             self.assertEqual(app.dataframe[0].value["port"].tolist(), [80, 81, 82, 83])
             self.assertEqual(json.loads(download.call_args.kwargs["data"]), report)
             self.assertTrue(any("Target: 127.0.0.1" in caption.value for caption in app.caption))
@@ -152,6 +159,7 @@ class DashboardTests(unittest.TestCase):
             app.number_input(key="start_port").set_value(80)
             app.number_input(key="end_port").set_value(80)
             app.button[0].click().run()
+            finish_scan(app)
             self.assertEqual(len(app.get("download_button")), 1)
             app.number_input(key="end_port").set_value(79)
             app.button[0].click().run()
