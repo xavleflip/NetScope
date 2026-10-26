@@ -75,6 +75,18 @@ The requirements file is shared by the application and tests. It permits Streaml
 - `test_scan_jobs_dashboard.py`: progress, cancellation, blocked resubmission during
   cleanup, form/request state, two-session isolation, startup/worker failures and
   recovery, clearly labelled cancelled downloads/saves, and imported partial reports.
+- `test_cli.py`: actual subprocess help/invalid commands, real ephemeral-listener
+  JSON/CSV output, stdout/stderr separation, original no-option overwrite behavior,
+  explicit collisions/overwrite, failed publication, and exit codes. Child-process
+  SIGINT tests cancel before work and during event-controlled probes; no console
+  signal is sent to the user's terminal. Invalid-input tests guard socket creation.
+- `test_exports.py`: stable CSV columns, all outcomes, partial/empty reports,
+  formula and control-prefix protection, Unicode/quoting/newlines, unchanged JSON,
+  atomic UTF-8 publication, concurrent creates, collisions, and cleanup after
+  controlled fsync/publish failures without damaging existing files.
+- `test_csv_dashboard.py`: live local scan exports, filtered full CSV/JSON evidence,
+  imported formula-like text, cancelled labels, requested-but-unobserved ports,
+  and saved-history CSV downloads using isolated storage.
 
 ## Safety and cleanup
 

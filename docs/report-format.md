@@ -95,6 +95,9 @@ report**. See [progress and cancellation](progress-and-cancellation.md).
 - `comparison.py` reuses report validation to compare two observations without IO.
   Its [comparison download](scan-comparison.md) has a separate format and is not
   an importable scan report.
+- `exports.py` reuses validation for JSON and CSV serialization. CSV protects
+  spreadsheet text and explicitly labels unscanned ports; JSON retains the
+  underlying text. See [CLI and CSV export](cli-and-csv.md).
 
 The historical example files are kept unchanged. Normalized downloads add the
 version field and canonical UTC timestamps without rewriting the original file.

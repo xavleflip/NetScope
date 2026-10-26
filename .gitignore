@@ -229,6 +229,7 @@ plan/
 # Local verification environments, scratch files, and downloaded reports
 /work/
 /scan*.json
+/scan*.csv
 
 # Private local history and SQLite sidecars
 /data/

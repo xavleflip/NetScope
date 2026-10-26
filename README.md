@@ -4,7 +4,7 @@
 
 NetScope is a beginner cybersecurity project built with Python and Streamlit.
 It checks TCP ports on your own computer, shows connection outcomes with conventional
-service labels, and lets you download the results as a JSON report or explicitly
+service labels, and lets you download the results as JSON or CSV, or explicitly
 save them in local history for later use. It can also compare two observations
 to show status changes, missing coverage, and uncertain outcomes.
 
@@ -68,7 +68,7 @@ cd D:\Project\NetScope
 2. Enter `127.0.0.1` or `localhost` as the target.
 3. Choose the start/end ports and timeout, then click **Start Scan**.
 4. Review the status counts and table, or select **Show only open ports**.
-5. Click **Download JSON Report** to save the full results.
+5. Click **Download JSON Report** or **Download CSV Report** to export the full results.
 
 While running, the dashboard shows completed/total progress and **Cancel scan**.
 Cancellation stops new probes and waits for active connections to finish. **Start
@@ -118,6 +118,20 @@ To run the scanner without the dashboard:
 
 This checks the original common ports **21, 22, 25, 53, 80, 443, 3306, and 8080**,
 prints the results, and creates or overwrites `reports/scan.json`.
+
+For CLI help and a custom scan:
+
+```powershell
+.\.venv\Scripts\python.exe scanner.py --help
+.\.venv\Scripts\python.exe scanner.py --target localhost --start-port 8000 --end-port 8080 --timeout 0.5
+.\.venv\Scripts\python.exe scanner.py --start-port 8080 --end-port 8080 --format csv --output scan-local.csv
+```
+
+Commands with options print to stdout and save a file only with `--output`.
+Explicit destinations refuse existing files unless you add `--overwrite`; the
+parent folder must exist. Progress goes to stderr. **Ctrl+C** requests cancellation
+and exports cancelled evidence after cleanup. CLI scans never save to history.
+See [CLI and CSV usage](docs/cli-and-csv.md) for exit codes, file safety, and CSV details.
 
 ## Try the portfolio demonstration
 

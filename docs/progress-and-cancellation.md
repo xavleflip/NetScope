@@ -17,7 +17,7 @@ outcome is open, an explicit refusal, a timeout, or another connection error.
    all its probe workers have finished. Active probes normally finish within
    their per-connection timeout, plus coordination and operating-system overhead.
 5. Review the **cancelled** result and its completed/requested counts. Download
-   the cancelled JSON, or use **Save cancelled report** to retain it in history.
+   the cancelled JSON/CSV, or use **Save cancelled report** to retain it in history.
 
 The active request is fixed at submission. Form edits do not change that job;
 review the form before starting the next scan. Other sessions have independent
@@ -32,6 +32,10 @@ Closing the browser does not leave a permanent monitoring job. The finite scan
 finishes and joins its workers without waiting for UI messages to be consumed.
 It does not save automatically, and its session result may be lost when the
 session is discarded. Stop the dashboard normally with **Ctrl+C** when finished.
+
+In the standalone CLI, **Ctrl+C** requests cooperative scan cancellation and
+exports cancelled evidence after worker cleanup. It returns exit code 130 unless
+an operational output failure takes precedence. See [CLI usage](cli-and-csv.md).
 
 ## Version-2 reports
 
